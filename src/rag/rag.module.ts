@@ -10,13 +10,19 @@ import { RagController } from './rag.controller';
     ElasticsearchModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        node: configService.get<string>('ELASTICSEARCH_NODE'),
-        auth: {
-          username: configService.get<string>('ELASTICSEARCH_USERNAME'),
-          password: configService.get<string>('ELASTICSEARCH_PASSWORD'),
-        },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const node = configService.get<string>('ELASTICSEARCH_NODE');
+        const username = configService.get<string>('ELASTICSEARCH_USERNAME');
+        const password = configService.get<string>('ELASTICSEARCH_PASSWORD');
+        
+        return {
+          node: node || 'http://localhost:9200',
+          auth: username && password ? {
+            username,
+            password,
+          } : undefined,
+        };
+      },
     }),
   ],
   controllers: [RagController],

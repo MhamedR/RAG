@@ -1,27 +1,35 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
-import { Strategy } from 'passport-headerapikey';
+import Strategy from 'passport-headerapikey';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class ApiKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
   constructor(private readonly configService: ConfigService) {
+    const headerName = configService.get<string>('API_KEY_HEADER_NAME');
+    if (!headerName) {
+      throw new Error('API_KEY_HEADER_NAME is not defined');
+    }
+
     super(
-      { header: configService.get<string>('API_KEY_HEADER_NAME'), passReqToCallback: true },
-      true,
-      async (req, apiKey, done) => {
-        return this.validate(apiKey, done);
+      {
+        header: headerName,
+        prefix: '',
       },
+      true
     );
   }
 
-  async validate(apiKey: string, done: (error: Error, data) => {}) {
+  validate(apiKey: string): boolean | Promise<boolean> {
     const expectedApiKey = this.configService.get<string>('API_KEY');
+    if (!expectedApiKey) {
+      throw new Error('API_KEY is not defined');
+    }
     
     if (apiKey === expectedApiKey) {
-      done(null, true);
-    } else {
-      done(new UnauthorizedException(), null);
+      return true;
     }
+    
+    throw new UnauthorizedException();
   }
 } 

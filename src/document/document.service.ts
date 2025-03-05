@@ -45,7 +45,7 @@ export class DocumentService {
       const chunks = this.chunkContent(content);
       
       // Index each chunk
-      const chunkIds = [];
+      const chunkIds: string[] = [];
       for (let i = 0; i < chunks.length; i++) {
         const chunkMetadata = {
           ...metadata,
@@ -79,7 +79,7 @@ export class DocumentService {
 
   private chunkContent(content: string, chunkSize: number = 1000): string[] {
     const words = content.split(/\s+/);
-    const chunks = [];
+    const chunks: string[] = [];
     
     for (let i = 0; i < words.length; i += chunkSize) {
       chunks.push(words.slice(i, i + chunkSize).join(' '));

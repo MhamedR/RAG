@@ -61,12 +61,13 @@ export class RagService {
       // Step 1: Generate embedding for the query
       const queryEmbedding = await this.generateEmbedding(query);
       
-      // Step 2: Retrieve relevant documents from Elasticsearch
+      // Step 2: Search for relevant documents
       const searchResults = await this.elasticsearchService.searchByVector(queryEmbedding);
       
       if (!searchResults.length) {
         // If no context is found, just use the LLM directly
-        return await this.chatModel.invoke(query).then(res => res.content);
+        const response = await this.chatModel.invoke(query);
+        return typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
       }
 
       // Step 3: Prepare the context from retrieved documents

@@ -100,19 +100,19 @@ export class ElasticsearchService implements OnModuleInit {
                 params: { query_vector: embedding }
               }
             }
-          },
-          _source: {
-            includes: ['content', 'metadata']
           }
         }
       });
-
-      return response.hits.hits.map(hit => ({
-        id: hit._id,
-        score: hit._score,
-        content: hit._source.content,
-        metadata: hit._source.metadata,
-      }));
+      
+      return response.hits.hits.map(hit => {
+        const source = hit._source as { content: string; metadata: any };
+        return {
+          id: hit._id,
+          score: hit._score,
+          content: source.content,
+          metadata: source.metadata,
+        };
+      });
     } catch (error) {
       this.logger.error(`Failed to search by vector: ${error.message}`, error.stack);
       throw error;

@@ -3,6 +3,7 @@ import { BullModule } from '@nestjs/bull';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { QueueService } from './queue.service';
 import { QueueProcessor } from './queue.processor';
+import { AiModule } from '../ai/ai.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { QueueProcessor } from './queue.processor';
     BullModule.registerQueue({
       name: 'ai-tasks',
     }),
+    AiModule,
   ],
   providers: [QueueService, QueueProcessor],
   exports: [QueueService],
