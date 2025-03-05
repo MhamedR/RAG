@@ -1,0 +1,44 @@
+version: '3'
+
+services:
+  # NestJS Application
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - elasticsearch
+    volumes:
+      - ./uploads:/usr/src/app/uploads
+    restart: unless-stopped
+  
+  # Redis service for BullMQ job queue
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+  
+  # Elasticsearch service for vector store
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.6.0
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    restart: unless-stopped
+
+# Persistent volumes
+volumes:
+  redis-data:
+  es-data: 
