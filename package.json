@@ -22,7 +22,6 @@
   "dependencies": {
     "@elastic/elasticsearch": "^8.17.1",
     "@langchain/community": "^0.3.34",
-    "@langchain/core": "^0.1.22",
     "@langchain/openai": "^0.4.4",
     "@nestjs/bull": "^11.0.2",
     "@nestjs/common": "^11.0.11",
@@ -30,6 +29,7 @@
     "@nestjs/core": "^11.0.11",
     "@nestjs/elasticsearch": "^11.0.0",
     "@nestjs/jwt": "^11.0.0",
+    "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.11",
     "@nestjs/websockets": "^11.0.11",
     "bull": "^4.16.5",

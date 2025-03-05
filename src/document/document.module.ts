@@ -3,7 +3,7 @@ import { MulterModule } from '@nestjs/platform-express';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { DocumentController } from './document.controller';
 import { DocumentService } from './document.service';
-import { RagModule } from '../../../src/rag/rag.module';
+import { RagModule } from '../rag/rag.module';
 
 @Module({
   imports: [

@@ -1,6 +1,6 @@
 import { Controller, Get, Query, Res, UseGuards } from '@nestjs/common';
 import { Response } from 'express';
-import { OpenAIService } from '../../../src/ai/openai.service';
+import { OpenAIService } from '../ai/openai.service';
 import { AuthGuard } from '@nestjs/passport';
 
 @Controller('api/ai')
@@ -12,7 +12,7 @@ export class AiController {
   async getAiResponse(
     @Query('prompt') prompt: string,
     @Res() res: Response,
-  ): Promise<void> {
+  ): Promise<any> {
     if (!prompt) {
       return res.status(400).json({ error: 'Prompt is required' });
     }

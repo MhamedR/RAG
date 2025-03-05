@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as pdfParse from 'pdf-parse';
-import { RagService } from '../../../src/rag/rag.service';
+import { RagService } from '../rag/rag.service';
 
 @Injectable()
 export class DocumentService {
