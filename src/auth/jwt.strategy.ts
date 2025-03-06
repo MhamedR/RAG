@@ -18,11 +18,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: any) {
+  async validate(payload: any, done: Function) {
     // You can add more validation logic here
     if (!payload.sub) {
       throw new UnauthorizedException();
     }
-    return { userId: payload.sub, username: payload.username };
+    return  done(null, { userId: payload.sub, username: payload.username });
   }
 } 
