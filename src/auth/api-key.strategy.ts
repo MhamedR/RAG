@@ -16,7 +16,7 @@ export class ApiKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
         header: headerName,
         prefix: '',
       },
-      true
+      false
     );
   }
 

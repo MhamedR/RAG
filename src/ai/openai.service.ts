@@ -19,7 +19,7 @@ export class OpenAIService {
     
     try {
       const stream = await this.openai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
+        model: 'gpt-4o-mini',
         messages: [{ role: 'user', content: prompt }],
         stream: true,
       });
@@ -49,7 +49,7 @@ export class OpenAIService {
   async getCompletion(prompt: string): Promise<string> {
     try {
       const response = await this.openai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
+        model: 'gpt-4o-mini',
         messages: [{ role: 'user', content: prompt }],
       });
 

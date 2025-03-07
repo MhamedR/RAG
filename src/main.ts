@@ -10,13 +10,17 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT') || 3000;
   
-  // Enable CORS
-  app.enableCors();
+  // Enable CORS for all origins
+  app.enableCors({
+    origin: '*',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
+  });
   
   // Global prefix for all routes
   app.setGlobalPrefix('api');
   
   await app.listen(port);
-  logger.log(`Application is running on: http://localhost:${port}`);
+  logger.log(`Application is running on test : http://localhost:${port}`);
 }
 bootstrap(); 
