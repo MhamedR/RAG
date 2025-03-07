@@ -1,22 +1,39 @@
-import { Controller, Get, Query, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Res, UseGuards, Logger } from '@nestjs/common';
 import { Response } from 'express';
-import { OpenAIService } from '../ai/openai.service';
-import { AuthGuard } from '@nestjs/passport';
+import { LlamaService } from './llama.service';
+import { ApiKeyGuard } from '../auth/api-key.guard';
 
 @Controller('api/ai')
 export class AiController {
-  constructor(private readonly openAIService: OpenAIService) {}
+  private readonly logger = new Logger(AiController.name);
+
+  constructor(private readonly llamaService: LlamaService) {
+    this.logger.log('AI Controller initialized with LlamaService');
+  }
 
   @Get()
-  @UseGuards(AuthGuard(['jwt', 'api-key']))
+  @UseGuards(ApiKeyGuard)
   async getAiResponse(
     @Query('prompt') prompt: string,
     @Res() res: Response,
   ): Promise<any> {
+    this.logger.log(
+      `Processing AI request with prompt: ${prompt?.substring(0, 30)}...`,
+    );
+
     if (!prompt) {
       return res.status(400).json({ error: 'Prompt is required' });
     }
 
-    await this.openAIService.streamCompletion(prompt, res);
+    try {
+      this.logger.log('Calling LlamaService streamCompletion');
+      await this.llamaService.streamCompletion(prompt, res);
+    } catch (error: any) {
+      this.logger.error(
+        `Error processing AI request: ${error.message}`,
+        error.stack,
+      );
+      return res.status(500).json({ error: 'Failed to process AI request' });
+    }
   }
 } 

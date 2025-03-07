@@ -1,108 +1,90 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { OpenAIEmbeddings } from '@langchain/openai';
-import { ChatOpenAI } from '@langchain/openai';
 import { ElasticsearchService } from './elasticsearch.service';
-import { Document } from '@langchain/core/documents';
-import { StringOutputParser } from '@langchain/core/output_parsers';
-import { RunnableSequence } from '@langchain/core/runnables';
-import { PromptTemplate } from '@langchain/core/prompts';
+import axios from 'axios';
 
 @Injectable()
 export class RagService {
   private readonly logger = new Logger(RagService.name);
-  private readonly embeddings: OpenAIEmbeddings;
-  private readonly chatModel: ChatOpenAI;
+  private readonly baseUrl: string;
+  private readonly modelName: string;
 
   constructor(
     private readonly configService: ConfigService,
     private readonly elasticsearchService: ElasticsearchService,
   ) {
-    const apiKey = this.configService.get<string>('OPENAI_API_KEY');
-    this.embeddings = new OpenAIEmbeddings({ openAIApiKey: apiKey });
-    this.chatModel = new ChatOpenAI({ 
-      openAIApiKey: apiKey,
-      modelName: 'gpt-4',
-    });
+    this.baseUrl = this.configService.get<string>('OLLAMA_BASE_URL') || 'http://localhost:11434';
+    this.modelName = this.configService.get<string>('OLLAMA_MODEL') || 'llama3';
+    
+    this.logger.log(`Initialized RagService with baseUrl: ${this.baseUrl} and model: ${this.modelName}`);
   }
 
   async generateEmbedding(text: string): Promise<number[]> {
     try {
-      const embedding = await this.embeddings.embedQuery(text);
-      return embedding;
+      const response = await axios.post(`${this.baseUrl}/api/embeddings`, {
+        model: this.modelName,
+        prompt: text,
+      });
+
+      return response.data.embedding;
     } catch (error) {
-      this.logger.error(`Failed to generate embedding: ${error.message}`, error.stack);
-      throw error;
+      this.logger.error(`Error generating embedding: ${error.message}`, error.stack);
+      throw new Error('Failed to generate embedding');
     }
   }
 
-  async indexDocument(content: string, metadata: any): Promise<string> {
+  async indexDocument(documentId: string, content: string, metadata: Record<string, any>): Promise<void> {
     try {
       const embedding = await this.generateEmbedding(content);
-      
-      const document = {
-        content,
-        embedding,
-        metadata: {
-          ...metadata,
-          created_at: new Date(),
-        },
-      };
-
-      return await this.elasticsearchService.indexDocument(document);
+      await this.elasticsearchService.indexDocument(documentId, content, embedding, metadata);
+      this.logger.log(`Document indexed successfully: ${documentId}`);
     } catch (error) {
-      this.logger.error(`Failed to index document: ${error.message}`, error.stack);
-      throw error;
+      this.logger.error(`Error indexing document: ${error.message}`, error.stack);
+      throw new Error('Failed to index document');
     }
   }
 
-  async query(query: string): Promise<string> {
+  async query(query: string): Promise<any> {
     try {
-      // Step 1: Generate embedding for the query
-      const queryEmbedding = await this.generateEmbedding(query);
+      // Generate embedding for the query
+      const embedding = await this.generateEmbedding(query);
       
-      // Step 2: Search for relevant documents
-      const searchResults = await this.elasticsearchService.searchByVector(queryEmbedding);
+      // Search for similar documents
+      const documents = await this.elasticsearchService.searchSimilarDocuments(embedding);
       
-      if (!searchResults.length) {
-        // If no context is found, just use the LLM directly
-        const response = await this.chatModel.invoke(query);
-        return typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
+      if (!documents.length) {
+        return { answer: 'No relevant documents found.' };
       }
-
-      // Step 3: Prepare the context from retrieved documents
-      const context = searchResults
-        .map(result => result.content)
-        .join("\n\n");
-
-      // Step 4: Create a prompt template for the RAG
-      const promptTemplate = PromptTemplate.fromTemplate(`
-        Answer the question based on the following context:
-        
-        Context:
-        {context}
-        
-        Question: {question}
-        
-        Answer:
-      `);
-
-      // Step 5: Create the RAG pipeline
-      const ragChain = RunnableSequence.from([
-        {
-          context: () => context,
-          question: (input: string) => input,
-        },
-        promptTemplate,
-        this.chatModel,
-        new StringOutputParser(),
-      ]);
-
-      // Step 6: Execute the RAG chain
-      return await ragChain.invoke(query);
+      
+      // Construct context from documents
+      const context = documents.map(doc => doc.content).join('\n\n');
+      
+      // Generate response using Ollama
+      const response = await axios.post(`${this.baseUrl}/api/chat`, {
+        model: this.modelName,
+        messages: [
+          { 
+            role: 'system', 
+            content: 'You are a helpful assistant. Use the provided context to answer the question. If the answer is not in the context, say "I don\'t have enough information to answer that."' 
+          },
+          { 
+            role: 'user', 
+            content: `Context:\n${context}\n\nQuestion: ${query}` 
+          }
+        ],
+      });
+      
+      return { 
+        answer: response.data.message?.content || 'No response generated.',
+        documents: documents.map(doc => ({
+          id: doc.id,
+          score: doc.score,
+          metadata: doc.metadata
+        }))
+      };
     } catch (error) {
-      this.logger.error(`Failed to process RAG query: ${error.message}`, error.stack);
-      throw error;
+      this.logger.error(`Error querying RAG: ${error.message}`, error.stack);
+      throw new Error('Failed to query RAG system');
     }
   }
 } 

@@ -41,25 +41,32 @@ if command -v docker &> /dev/null; then
   echo -e "${GREEN}✓ Docker is installed${NC}"
   
   # Check for Docker Compose
-  if command -v docker-compose &> /dev/null; then
+  if docker compose version &> /dev/null || command -v docker-compose &> /dev/null; then
     echo -e "${GREEN}✓ Docker Compose is installed${NC}"
     
-    echo -e "${YELLOW}Would you like to start the Docker services? (Redis and Elasticsearch) [y/N]${NC}"
+    echo -e "${YELLOW}Would you like to start the Docker services? (Redis, Elasticsearch, and Ollama) [y/N]${NC}"
     read -r start_docker
     
     if [[ "$start_docker" =~ ^[Yy]$ ]]; then
       echo -e "${YELLOW}Starting Docker services...${NC}"
-      docker-compose up -d redis elasticsearch
+      docker compose up -d
       echo -e "${GREEN}✓ Docker services started${NC}"
+      
+      echo -e "${YELLOW}Waiting for Ollama to initialize...${NC}"
+      sleep 10
+      
+      echo -e "${YELLOW}Pulling the llama3 model (this may take a while)...${NC}"
+      curl -X POST http://localhost:11434/api/pull -d '{"name": "llama3"}'
+      echo -e "${GREEN}✓ Model pull request initiated${NC}"
     fi
   else
     echo -e "${RED}✗ Docker Compose is not installed${NC}"
-    echo -e "${YELLOW}Please install Docker Compose to easily start Redis and Elasticsearch.${NC}"
+    echo -e "${YELLOW}Please install Docker Compose to easily start Redis, Elasticsearch, and Ollama.${NC}"
   fi
 else
   echo -e "${RED}✗ Docker is not installed${NC}"
-  echo -e "${YELLOW}Please install Docker to easily start Redis and Elasticsearch.${NC}"
-  echo -e "${YELLOW}Alternatively, install Redis and Elasticsearch manually as described in SETUP.md.${NC}"
+  echo -e "${YELLOW}Please install Docker to easily start Redis, Elasticsearch, and Ollama.${NC}"
+  echo -e "${YELLOW}Alternatively, install them manually as described in SETUP.md.${NC}"
 fi
 
 # Generate a JWT secret if not already set in .env
@@ -81,7 +88,7 @@ fi
 
 # Generate an API key if not already set in .env
 api_key=$(grep "API_KEY=" .env | cut -d '=' -f2)
-if [ "$api_key" = "your_api_key" ] || [ -z "$api_key" ]; then
+if [ "$api_key" = "your_secure_api_key_here" ] || [ "$api_key" = "your_api_key" ] || [ -z "$api_key" ]; then
   echo -e "${YELLOW}Generating a secure API key...${NC}"
   if command -v node &> /dev/null; then
     api_key=$(node -e "console.log(require('crypto').randomUUID())")
@@ -96,13 +103,23 @@ else
   echo -e "${GREEN}✓ API key is already set${NC}"
 fi
 
-# Check for OpenAI API key
-openai_key=$(grep "OPENAI_API_KEY=" .env | cut -d '=' -f2)
-if [ "$openai_key" = "your_openai_api_key" ] || [ -z "$openai_key" ]; then
-  echo -e "${RED}✗ OpenAI API key is not set${NC}"
-  echo -e "${YELLOW}Please set your OpenAI API key in the .env file.${NC}"
+# Check for Ollama settings
+ollama_url=$(grep "OLLAMA_BASE_URL=" .env | cut -d '=' -f2)
+if [ -z "$ollama_url" ]; then
+  echo -e "${YELLOW}Setting default Ollama base URL...${NC}"
+  echo "OLLAMA_BASE_URL=http://localhost:11434" >> .env
+  echo -e "${GREEN}✓ Set default Ollama base URL${NC}"
 else
-  echo -e "${GREEN}✓ OpenAI API key is set${NC}"
+  echo -e "${GREEN}✓ Ollama base URL is set${NC}"
+fi
+
+ollama_model=$(grep "OLLAMA_MODEL=" .env | cut -d '=' -f2)
+if [ -z "$ollama_model" ]; then
+  echo -e "${YELLOW}Setting default Ollama model...${NC}"
+  echo "OLLAMA_MODEL=llama3" >> .env
+  echo -e "${GREEN}✓ Set default Ollama model${NC}"
+else
+  echo -e "${GREEN}✓ Ollama model is set${NC}"
 fi
 
 echo
@@ -112,6 +129,9 @@ echo -e "${YELLOW}===================================${NC}"
 echo
 echo -e "To start the application in development mode, run:"
 echo -e "${YELLOW}npm run start:dev${NC}"
+echo
+echo -e "To start all services using Docker Compose, run:"
+echo -e "${YELLOW}docker compose up -d${NC}"
 echo
 echo -e "For more detailed setup instructions, refer to the SETUP.md file."
 echo 

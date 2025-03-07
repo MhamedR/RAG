@@ -24,7 +24,7 @@ export class DocumentService {
     }
   }
 
-  async processFile(file: Express.Multer.File, metadata: any): Promise<string> {
+  async processFile(file: Express.Multer.File, metadata: any): Promise<string[]> {
     try {
       const filePath = path.join(this.uploadPath, file.originalname);
       
@@ -47,6 +47,7 @@ export class DocumentService {
       // Index each chunk
       const chunkIds: string[] = [];
       for (let i = 0; i < chunks.length; i++) {
+        const chunkId = `${file.originalname.replace(/\s+/g, '_')}_chunk_${i}`;
         const chunkMetadata = {
           ...metadata,
           source: file.originalname,
@@ -54,12 +55,12 @@ export class DocumentService {
           totalChunks: chunks.length,
         };
         
-        const chunkId = await this.ragService.indexDocument(chunks[i], chunkMetadata);
+        await this.ragService.indexDocument(chunkId, chunks[i], chunkMetadata);
         chunkIds.push(chunkId);
       }
       
       this.logger.log(`Successfully processed document: ${file.originalname}`);
-      return chunkIds.join(',');
+      return chunkIds;
     } catch (error) {
       this.logger.error(`Failed to process document: ${error.message}`, error.stack);
       throw error;

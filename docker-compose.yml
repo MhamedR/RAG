@@ -9,10 +9,12 @@ services:
     env_file:
       - .env
     environment:
-      - OPENAI_API_KEY=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
+      - API_KEY=your_secure_api_key_here
+      - OPENAI_API_KEY=dummy_key_for_compatibility
     depends_on:
       - redis
       - elasticsearch
+      - ollama
     volumes:
       - ./:/usr/src/app
       - /usr/src/app/node_modules
@@ -41,7 +43,26 @@ services:
       - es-data:/usr/share/elasticsearch/data
     restart: unless-stopped
 
+  # Ollama service for LLM inference
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    restart: unless-stopped
+    # GPU support is optional
+    # Uncomment the following section if you have an NVIDIA GPU
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
 # Persistent volumes
 volumes:
   redis-data:
-  es-data: 
+  es-data:
+  ollama-models: 

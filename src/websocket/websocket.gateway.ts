@@ -9,7 +9,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Injectable, Logger } from '@nestjs/common';
-import { OpenAIService } from '../ai/openai.service';
+import { LlamaService } from '../ai/llama.service';
 import { RagService } from '../rag/rag.service';
 
 @WebSocketGateway({
@@ -23,7 +23,7 @@ export class WebsocketGateway implements OnGatewayConnection, OnGatewayDisconnec
   private readonly logger = new Logger(WebsocketGateway.name);
 
   constructor(
-    private readonly openAiService: OpenAIService,
+    private readonly llamaService: LlamaService,
     private readonly ragService: RagService,
   ) {}
 
@@ -49,7 +49,7 @@ export class WebsocketGateway implements OnGatewayConnection, OnGatewayDisconnec
       if (payload.useRag) {
         response = await this.ragService.query(payload.prompt);
       } else {
-        response = await this.openAiService.getCompletion(payload.prompt);
+        response = await this.llamaService.getCompletion(payload.prompt);
       }
       
       // Send the response back to the client

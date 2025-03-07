@@ -1,6 +1,6 @@
 # AI-Powered API with NestJS
 
-A powerful AI-powered API built with NestJS that provides seamless integration with OpenAI's GPT models, asynchronous job processing, secure authentication, and advanced AI features like Retrieval-Augmented Generation (RAG).
+A powerful AI-powered API built with NestJS that provides seamless integration with Ollama's Llama3 model, asynchronous job processing, secure authentication, and advanced AI features like Retrieval-Augmented Generation (RAG).
 
 ## Features
 
@@ -14,7 +14,7 @@ A powerful AI-powered API built with NestJS that provides seamless integration w
 - Scalable job management
 
 ### 3. Secure API Architecture
-- JWT and API Key authentication
+- API Key authentication
 - Modular security integration
 - Secure data transmission
 
@@ -23,7 +23,7 @@ A powerful AI-powered API built with NestJS that provides seamless integration w
 - Concurrent multi-task handling
 - Flexible architecture for feature expansion
 
-### 5. Enhanced AI Capabilities with LangChain.js
+### 5. Enhanced AI Capabilities
 - Memory-based conversations
 - Structured AI pipelines
 - Contextual AI responses
@@ -52,7 +52,7 @@ A powerful AI-powered API built with NestJS that provides seamless integration w
 - Node.js (v16+)
 - Redis
 - Elasticsearch
-- OpenAI API key
+- Ollama
 
 ### Installation
 
@@ -73,19 +73,24 @@ cp .env.example .env
 # Edit .env with your configuration
 ```
 
-4. Start the application
+4. Run the setup script
+```bash
+bash setup.sh
+```
+
+5. Start the application
 ```bash
 npm run start:dev
 ```
 
 ### Detailed Setup Guide
 
-For a more detailed setup with step-by-step instructions for installing Redis, Elasticsearch, and configuring OpenAI API keys, please refer to our comprehensive [SETUP.md](SETUP.md) guide.
+For a more detailed setup with step-by-step instructions for installing Redis, Elasticsearch, and configuring Ollama, please refer to our comprehensive [SETUP.md](SETUP.md) guide.
 
 The setup guide includes:
 - Installing and configuring Redis for the queue system
 - Installing and configuring Elasticsearch for the vector store
-- Obtaining and setting up an OpenAI API key
+- Installing and setting up Ollama for AI inference
 - Setting up JWT secrets and API keys for authentication
 - Docker configuration for containerization
 - Testing scripts to verify your setup
@@ -96,14 +101,14 @@ The setup guide includes:
 We've included several test scripts in the `tests` directory to help you verify your setup:
 - `tests/redis-test.js` - Tests Redis connection
 - `tests/elasticsearch-test.js` - Tests Elasticsearch connection and vector capabilities
-- `tests/openai-test.js` - Tests OpenAI API key configuration
+- `tests/ollama-test.js` - Tests Ollama API configuration
 
 Run these tests to ensure your environment is properly configured:
 
 ```bash
 node tests/redis-test.js
 node tests/elasticsearch-test.js
-OPENAI_API_KEY=your_api_key node tests/openai-test.js
+node tests/ollama-test.js
 ```
 
 ### Docker Support
@@ -111,11 +116,11 @@ OPENAI_API_KEY=your_api_key node tests/openai-test.js
 For easy development and deployment, we've included Docker configuration:
 
 ```bash
-# Start all services (app, Redis, Elasticsearch)
-docker-compose up
+# Start all services (app, Redis, Elasticsearch, Ollama)
+docker compose up
 
-# Or run just the dependencies
-docker-compose up redis elasticsearch
+# Or run in detached mode
+docker compose up -d
 ```
 
 ## API Endpoints
@@ -142,6 +147,10 @@ docker-compose up redis elasticsearch
 ## Environment Variables
 
 See `.env.example` for all required environment variables.
+
+## Authentication
+
+All API endpoints are protected with API Key authentication. You need to include the API key in the `x-api-key` header with your requests.
 
 ## License
 
