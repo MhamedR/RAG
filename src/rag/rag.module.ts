@@ -16,11 +16,18 @@ import { RagController } from './rag.controller';
         const password = configService.get<string>('ELASTICSEARCH_PASSWORD');
         
         return {
-          node: node || 'http://localhost:9200',
+          node: node || 'http://elasticsearch:9200',
           auth: username && password ? {
             username,
             password,
           } : undefined,
+          maxRetries: 10,
+          requestTimeout: 60000,
+          pingTimeout: 60000,
+          sniffOnStart: true,
+          ssl: {
+            rejectUnauthorized: false
+          }
         };
       },
     }),

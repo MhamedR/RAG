@@ -3,15 +3,17 @@ import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 
 @Injectable()
-export class LlamaService {
-  private readonly logger = new Logger(LlamaService.name);
+export class AiService {
+  private readonly logger = new Logger(AiService.name);
   private readonly baseUrl: string;
   private readonly modelName: string;
 
   constructor(private readonly configService: ConfigService) {
     this.baseUrl = this.configService.get<string>('OLLAMA_BASE_URL') || 'http://localhost:11434';
     this.modelName = this.configService.get<string>('OLLAMA_MODEL') || 'tinyllama';
-    this.logger.log(`Initialized LlamaService with baseUrl: ${this.baseUrl} and model: ${this.modelName}`);
+    this.logger.log(
+      `Initialized AiService with baseUrl: ${this.baseUrl} and model: ${this.modelName}`,
+    );
   }
 
   async getCompletion(prompt: string): Promise<string> {
@@ -23,6 +25,10 @@ export class LlamaService {
         prompt: prompt,
         stream: false,
       });
+      
+      if (!response.data || !response.data.response) {
+        throw new Error('Invalid response from Ollama API');
+      }
       
       return response.data.response;
     } catch (error) {

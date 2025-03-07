@@ -8,26 +8,35 @@ import {
   ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Injectable, Logger } from '@nestjs/common';
-import { LlamaService } from '../ai/llama.service';
+import { Logger } from '@nestjs/common';
+import { AiService } from '../ai/ai.service';
 import { RagService } from '../rag/rag.service';
+
+enum MessageType {
+  AI_COMPLETION = 'ai_completion',
+  RAG_QUERY = 'rag_query',
+}
+
+interface MessagePayload {
+  type: MessageType;
+  prompt: string;
+}
 
 @WebSocketGateway({
   cors: {
     origin: '*',
   },
 })
-@Injectable()
 export class WebsocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
   private readonly logger = new Logger(WebsocketGateway.name);
 
   constructor(
-    private readonly llamaService: LlamaService,
+    private readonly aiService: AiService,
     private readonly ragService: RagService,
   ) {}
 
-  async handleConnection(client: Socket) {
+  handleConnection(client: Socket) {
     this.logger.log(`Client connected: ${client.id}`);
   }
 
@@ -35,34 +44,30 @@ export class WebsocketGateway implements OnGatewayConnection, OnGatewayDisconnec
     this.logger.log(`Client disconnected: ${client.id}`);
   }
 
-  @SubscribeMessage('chat-message')
-  async handleChatMessage(
+  @SubscribeMessage('message')
+  async handleMessage(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { prompt: string; useRag: boolean },
+    @MessageBody() payload: MessagePayload,
   ) {
     try {
-      this.logger.log(`Received message from client ${client.id}: ${payload.prompt.substring(0, 50)}...`);
+      this.logger.log(`Received message from ${client.id}: ${JSON.stringify(payload)}`);
       
-      let response: string;
+      let response;
       
-      // Use RAG if requested
-      if (payload.useRag) {
-        response = await this.ragService.query(payload.prompt);
+      if (payload.type === MessageType.AI_COMPLETION) {
+        this.logger.log('Processing AI completion request');
+        response = await this.aiService.getCompletion(payload.prompt);
+      } else if (payload.type === MessageType.RAG_QUERY) {
+        this.logger.log('Processing RAG query request');
+        response = await this.ragService.queryDocuments(payload.prompt);
       } else {
-        response = await this.llamaService.getCompletion(payload.prompt);
+        response = { error: 'Invalid message type' };
       }
       
-      // Send the response back to the client
-      client.emit('chat-response', {
-        content: response,
-        timestamp: new Date().toISOString(),
-      });
+      client.emit('response', response);
     } catch (error) {
-      this.logger.error(`Error processing WebSocket message: ${error.message}`, error.stack);
-      client.emit('error', {
-        message: 'Failed to process your request',
-        error: error.message,
-      });
+      this.logger.error(`Error processing message: ${error.message}`);
+      client.emit('response', { error: `Error: ${error.message}` });
     }
   }
 } 
