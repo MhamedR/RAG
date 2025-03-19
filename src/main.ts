@@ -17,10 +17,10 @@ async function bootstrap() {
     credentials: true,
   });
   
-  // Global prefix for all routes
-  app.setGlobalPrefix('api');
+  // We're not setting a global prefix because controllers already use 'api/' prefix
+  // app.setGlobalPrefix('api');
   
   await app.listen(port);
-  logger.log(`Application is running on test : http://localhost:${port}`);
+  logger.log(`Application is running on: http://localhost:${port}`);
 }
 bootstrap(); 

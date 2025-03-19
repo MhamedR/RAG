@@ -18,8 +18,8 @@ async function testElasticsearchConnection() {
     // Check if Elasticsearch is running
     const info = await client.info();
     console.log('Elasticsearch cluster info:');
-    console.log(`Cluster name: ${info.body.cluster_name}`);
-    console.log(`Cluster version: ${info.body.version.number}`);
+    console.log(`Cluster name: ${info.cluster_name}`);
+    console.log(`Cluster version: ${info.version.number}`);
     console.log('✅ Elasticsearch connection successful!');
     
     // Test if we can create a test index with vector capabilities
@@ -53,6 +53,9 @@ async function testElasticsearchConnection() {
     }
   } catch (error) {
     console.error('❌ Elasticsearch connection error:', error.message);
+    if (error.meta && error.meta.body) {
+      console.error('Error details:', JSON.stringify(error.meta.body, null, 2));
+    }
   } finally {
     // Close the connection
     await client.close();

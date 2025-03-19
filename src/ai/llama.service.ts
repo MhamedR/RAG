@@ -10,8 +10,8 @@ export class LlamaService {
   private readonly modelName: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.baseUrl = this.configService.get<string>('OLLAMA_URL') || 'http://ollama:11434';
-    this.modelName = this.configService.get<string>('OLLAMA_MODEL') || 'llama2';
+    this.baseUrl = this.configService.get<string>('OLLAMA_BASE_URL') || 'http://localhost:11434';
+    this.modelName = this.configService.get<string>('OLLAMA_MODEL') || 'llama3:latest';
     this.logger.log(`LlamaService initialized with model: ${this.modelName} and base URL: ${this.baseUrl}`);
   }
 

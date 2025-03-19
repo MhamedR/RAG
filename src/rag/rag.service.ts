@@ -14,7 +14,7 @@ export class RagService {
     private readonly elasticsearchService: ElasticsearchService,
   ) {
     this.baseUrl = this.configService.get<string>('OLLAMA_BASE_URL') || 'http://localhost:11434';
-    this.modelName = this.configService.get<string>('OLLAMA_MODEL') || 'llama3';
+    this.modelName = this.configService.get<string>('OLLAMA_MODEL') || 'llama3:latest';
     
     this.logger.log(`Initialized RagService with baseUrl: ${this.baseUrl} and model: ${this.modelName}`);
   }
@@ -26,7 +26,8 @@ export class RagService {
         prompt: text,
       });
 
-      return response.data.embedding;
+      // Truncate embedding to 1024 dimensions (Elasticsearch limit)
+      return response.data.embedding.slice(0, 1024);
     } catch (error) {
       this.logger.error(`Error generating embedding: ${error.message}`, error.stack);
       throw new Error('Failed to generate embedding');
@@ -58,8 +59,10 @@ export class RagService {
       
       // Construct context from documents
       const context = documents.map(doc => doc.content).join('\n\n');
+      this.logger.log(`Generated context: ${context}`);
       
       // Generate response using Ollama
+      this.logger.log(`Sending chat request to ${this.baseUrl}/api/chat with model ${this.modelName}`);
       const response = await axios.post(`${this.baseUrl}/api/chat`, {
         model: this.modelName,
         messages: [
@@ -72,10 +75,31 @@ export class RagService {
             content: `Context:\n${context}\n\nQuestion: ${query}` 
           }
         ],
+        stream: false
       });
       
+      this.logger.log(`Response from Ollama: ${JSON.stringify(response.data)}`);
+      
+      // Handle streamed response
+      let fullResponse = '';
+      if (typeof response.data === 'string') {
+        // Parse the streaming response
+        const jsonLines = response.data.trim().split('\n');
+        const lastJsonResponse = jsonLines[jsonLines.length - 1];
+        try {
+          const parsedResponse = JSON.parse(lastJsonResponse);
+          fullResponse = parsedResponse.message?.content || '';
+        } catch (err) {
+          this.logger.error(`Error parsing JSON response: ${err.message}`);
+          fullResponse = 'Error parsing model response';
+        }
+      } else if (response.data.message && response.data.message.content) {
+        // Handle non-streaming response
+        fullResponse = response.data.message.content;
+      }
+      
       return { 
-        answer: response.data.message?.content || 'No response generated.',
+        answer: fullResponse || 'No response generated.',
         documents: documents.map(doc => ({
           id: doc.id,
           score: doc.score,

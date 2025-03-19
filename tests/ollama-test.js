@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 const baseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-const model = process.env.OLLAMA_MODEL || 'llama3';
+const model = process.env.OLLAMA_MODEL || 'llama3:latest';
 
 console.log(`Testing Ollama connection to ${baseUrl} with model ${model}`);
 
@@ -42,13 +42,15 @@ async function testOllama() {
       model,
       messages: [
         { role: 'user', content: 'Hello, are you working properly? Please respond in one short sentence.' }
-      ]
+      ],
+      stream: false
     });
     
     if (chatResponse.data.message && chatResponse.data.message.content) {
       console.log(`✅ Chat response: "${chatResponse.data.message.content}"`);
     } else {
       console.error('❌ Error: Failed to get chat response.');
+      console.error('Response data:', JSON.stringify(chatResponse.data, null, 2));
       process.exit(1);
     }
     
