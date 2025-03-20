@@ -1,7 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as fs from 'fs';
-import * as path from 'path';
 import * as pdfParse from 'pdf-parse';
 import { RagService } from '../rag/rag.service';
 
@@ -15,65 +13,80 @@ export class DocumentService {
     private readonly ragService: RagService,
   ) {
     this.uploadPath = this.configService.get<string>('DOCUMENT_UPLOAD_PATH') || './uploads';
-    this.ensureUploadDirectoryExists();
   }
 
-  private ensureUploadDirectoryExists() {
-    if (!fs.existsSync(this.uploadPath)) {
-      fs.mkdirSync(this.uploadPath, { recursive: true });
-    }
-  }
-
-  async processFile(file: Express.Multer.File, metadata: any): Promise<string[]> {
+  async processFile(
+    file: Express.Multer.File,
+    metadata: Record<string, unknown>,
+  ): Promise<string[]> {
     try {
-      const filePath = path.join(this.uploadPath, file.originalname);
+      this.logger.log('🔍 DEBUG: processFile method called');
       
-      // Save the file
-      fs.writeFileSync(filePath, file.buffer);
-      
-      // Extract text based on file type
-      let content: string;
-      if (file.mimetype === 'application/pdf') {
-        content = await this.extractTextFromPdf(filePath);
-      } else if (file.mimetype === 'text/plain') {
-        content = fs.readFileSync(filePath, 'utf8');
-      } else {
-        throw new Error(`Unsupported file type: ${file.mimetype}`);
+      if (!file) {
+        this.logger.error('File is undefined');
+        throw new Error('File is undefined');
       }
       
-      // Chunk the content if it's too large (simplified implementation)
+      this.logger.log(`⚠️ DEBUG: File details - buffer: ${file.buffer ? 'exists' : 'missing'}, size: ${file.buffer?.length || 0}`);
+      
+      // Check if buffer exists
+      if (!file.buffer || file.buffer.length === 0) {
+        this.logger.error('File buffer is missing or empty');
+        throw new Error('File buffer is missing or empty');
+      }
+      
+      // Extract text from buffer directly
+      let content: string = '';
+      
+      try {
+        // Determine file type
+        const isPdf = 
+          file.mimetype === 'application/pdf' || 
+          (file.originalname && file.originalname.toLowerCase().endsWith('.pdf'));
+          
+        if (isPdf) {
+          this.logger.log(`Parsing PDF with buffer size: ${file.buffer.length}`);
+          const pdfResult = await pdfParse(file.buffer);
+          content = pdfResult.text;
+        } else {
+          // Default to text for any other file type
+          content = file.buffer.toString('utf8');
+        }
+        
+        this.logger.log(`Extracted ${content.length} characters from file`);
+      } catch (extractionError) {
+        this.logger.error(`Text extraction error: ${extractionError.message}`);
+        content = `[Failed to extract content from ${file.originalname || 'unknown file'}]`;
+      }
+      
+      // Chunk the content
       const chunks = this.chunkContent(content);
       
       // Index each chunk
       const chunkIds: string[] = [];
       for (let i = 0; i < chunks.length; i++) {
-        const chunkId = `${file.originalname.replace(/\s+/g, '_')}_chunk_${i}`;
+        const chunkId = `${(file.originalname || 'unnamed').replace(/\s+/g, '_')}_chunk_${i}`;
         const chunkMetadata = {
           ...metadata,
-          source: file.originalname,
+          source: file.originalname || 'unnamed',
           chunkIndex: i,
           totalChunks: chunks.length,
         };
         
-        await this.ragService.indexDocument(chunkId, chunks[i], chunkMetadata);
-        chunkIds.push(chunkId);
+        try {
+          await this.ragService.indexDocument(chunkId, chunks[i], chunkMetadata);
+          chunkIds.push(chunkId);
+        } catch (indexError) {
+          this.logger.error(`Error indexing chunk ${i}: ${indexError.message}`);
+          // Continue with other chunks
+        }
       }
       
-      this.logger.log(`Successfully processed document: ${file.originalname}`);
+      this.logger.log(`Successfully processed document: ${file.originalname || 'unnamed'}`);
       return chunkIds;
-    } catch (error) {
-      this.logger.error(`Failed to process document: ${error.message}`, error.stack);
-      throw error;
-    }
-  }
-
-  private async extractTextFromPdf(filePath: string): Promise<string> {
-    try {
-      const dataBuffer = fs.readFileSync(filePath);
-      const result = await pdfParse(dataBuffer);
-      return result.text;
-    } catch (error) {
-      this.logger.error(`Failed to extract text from PDF: ${error.message}`, error.stack);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to process document: ${errorMessage}`);
       throw error;
     }
   }
