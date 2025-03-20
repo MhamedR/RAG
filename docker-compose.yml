@@ -12,9 +12,12 @@ services:
       - API_KEY=your_secure_api_key_here
       - OPENAI_API_KEY=dummy_key_for_compatibility
     depends_on:
-      - redis
-      - elasticsearch
-      - ollama
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      ollama:
+        condition: service_started
     volumes:
       - ./:/usr/src/app
       - /usr/src/app/node_modules
@@ -42,6 +45,11 @@ services:
     volumes:
       - es-data:/usr/share/elasticsearch/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # Ollama service for LLM inference
   ollama:
