@@ -19,7 +19,7 @@ RUN npm run build
 RUN mkdir -p uploads && chmod 777 uploads
 
 # Expose port
-EXPOSE 3000
+EXPOSE 3001
 
 # Set environment variables
 ENV NODE_ENV=production
