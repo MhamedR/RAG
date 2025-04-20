@@ -41,15 +41,41 @@ export class WebsocketGateway implements OnGatewayConnection, OnGatewayDisconnec
     @MessageBody() payload: { prompt: string; useRag: boolean },
   ) {
     try {
-      this.logger.log(`Received message from client ${client.id}: ${payload.prompt.substring(0, 50)}...`);
+      // Check if payload exists before accessing its properties
+      if (!payload) {
+        this.logger.error('Received undefined payload from client');
+        client.emit('error', {
+          message: 'Invalid request: payload is missing',
+        });
+        return;
+      }
+
+      // Log the message in a safe way
+      try {
+        const promptPreview = typeof payload.prompt === 'string' ? 
+          (payload.prompt.length > 50 ? `${payload.prompt.slice(0, 50)}...` : payload.prompt) : 
+          'undefined';
+        this.logger.log(`Received message from client ${client.id}: ${promptPreview}`);
+      } catch (logError) {
+        this.logger.warn(`Failed to log client message: ${logError.message}`);
+      }
+      
+      // Check if prompt is provided
+      if (!payload.prompt) {
+        this.logger.warn(`Client ${client.id} sent a message without a prompt`);
+        client.emit('error', {
+          message: 'Invalid request: prompt is required',
+        });
+        return;
+      }
       
       let response: string;
       
       // Use RAG if requested
       if (payload.useRag) {
-        response = await this.ragService.query(payload.prompt);
+        response = await this.ragService.query(typeof payload.prompt === 'string' ? payload.prompt : '');
       } else {
-        response = await this.llamaService.getCompletion(payload.prompt);
+        response = await this.llamaService.getCompletion(typeof payload.prompt === 'string' ? payload.prompt : '');
       }
       
       // Send the response back to the client
@@ -58,10 +84,18 @@ export class WebsocketGateway implements OnGatewayConnection, OnGatewayDisconnec
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      this.logger.error(`Error processing WebSocket message: ${error.message}`, error.stack);
+      const errorMessage = error && typeof error === 'object' && 'message' in error 
+        ? String(error.message) 
+        : 'Unknown error';
+      
+      const errorStack = error && typeof error === 'object' && 'stack' in error 
+        ? String(error.stack) 
+        : '';
+      
+      this.logger.error(`Error processing WebSocket message: ${errorMessage}`, errorStack);
       client.emit('error', {
         message: 'Failed to process your request',
-        error: error.message,
+        error: errorMessage,
       });
     }
   }
