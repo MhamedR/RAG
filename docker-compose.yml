@@ -9,7 +9,7 @@ services:
     env_file:
       - .env
     environment:
-      - API_KEY=your_secure_api_key_here
+      - API_KEY=dev_api_key_123
       - OPENAI_API_KEY=dummy_key_for_compatibility
     depends_on:
       elasticsearch:
